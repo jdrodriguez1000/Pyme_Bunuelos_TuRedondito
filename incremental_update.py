@@ -175,7 +175,12 @@ def run_update():
         else:
             print(">>> Tablas Diarias: Al día.")
 
-    target_m = (hoy.replace(day=1) - timedelta(days=1)).replace(day=1)
+    # Mensual: Hasta el mes actual, excepto si hoy es el día 1 (en cuyo caso es hasta el anterior)
+    if hoy.day == 1:
+        target_m = (hoy - timedelta(days=1)).replace(day=1)
+    else:
+        target_m = hoy.replace(day=1)
+
     for table, col in TABLAS_MENSUALES.items():
         last_m = get_last_date(table)
         if last_m and last_m < target_m:
@@ -190,10 +195,16 @@ def run_update():
         else: print(f">>> {table}: Al día.")
 
     last_y_rec = get_last_date('usr_salario_minimo_anual')
-    if last_y_rec and last_y_rec.year < hoy.year:
+    
+    # Anual: Hasta el año actual, excepto si hoy es 1 de enero
+    target_y = hoy.year
+    if hoy.month == 1 and hoy.day == 1:
+        target_y = hoy.year - 1
+
+    if last_y_rec and last_y_rec.year < target_y:
         last_smlv_val = int(supabase.table('usr_salario_minimo_anual').select("smlv").order("fecha", desc=True).limit(1).execute().data[0]['smlv'])
         to_up = []
-        for y in range(last_y_rec.year + 1, hoy.year + 1):
+        for y in range(last_y_rec.year + 1, target_y + 1):
             last_smlv_val = int(last_smlv_val * 1.09)
             to_up.append({'fecha': f"{y}-01-01", 'smlv': int(last_smlv_val)})
         supabase.table('usr_salario_minimo_anual').insert(to_up).execute()
